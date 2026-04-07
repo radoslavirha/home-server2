@@ -1,0 +1,91 @@
+# Cilium CNI — single-node cluster, native routing, kube-proxy replacement, Gateway API
+# Chart: https://helm.cilium.io — cilium/cilium
+
+# ── Routing: native (no VXLAN overlay — single node, no tunneling needed) ───
+routingMode: native
+autoDirectNodeRoutes: true
+# Must match the pod CIDR configured in Talos (Kubernetes default: 10.244.0.0/16)
+ipv4NativeRoutingCIDR: "10.244.0.0/16"
+# Primary interface — update if your interface name differs
+devices: "eno1"
+
+# ── IPAM: delegate pod CIDR assignment to Kubernetes ────────────────────────
+ipam:
+  mode: kubernetes
+
+# ── kube-proxy replacement ───────────────────────────────────────────────────
+# Talos patches/cilium.yaml disables the built-in kube-proxy — Cilium takes over.
+# Use KubePrism (localhost:7445) — required for kube-proxy replacement on Talos to
+# avoid a bootstrap deadlock where eBPF intercepts the API traffic before Cilium is
+# fully initialized. KubePrism is enabled by default in Talos 1.8+.
+kubeProxyReplacement: true
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+# ── Talos: security capabilities ─────────────────────────────────────────────
+# Talos does not permit loading kernel modules from Kubernetes workloads, so
+# SYS_MODULE must be dropped from Cilium's default capability set.
+# Ref: https://docs.siderolabs.com/kubernetes-guides/cni/deploying-cilium/
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# ── Talos: cgroup settings ────────────────────────────────────────────────────
+# Talos mounts cgroupv2 at /sys/fs/cgroup automatically — do not auto-mount.
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# ── Single-node: one operator replica is sufficient ─────────────────────────
+operator:
+  replicas: 1
+
+# ── Gateway API ──────────────────────────────────────────────────────────────
+# Cilium acts as the Gateway API controller.
+# Gateway API CRDs are installed by Terraform before this chart (null_resource.gateway_api_crds).
+gatewayAPI:
+  enabled: true
+
+# ── Hubble: L7 observability + Prometheus metrics ────────────────────────────
+hubble:
+  enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      # Set to true after kube-prometheus-stack is deployed (future ArgoCD app)
+      enabled: false
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+    service:
+      type: ClusterIP
+
+# ── Prometheus metrics from Cilium agent ────────────────────────────────────
+prometheus:
+  enabled: true
+  serviceMonitor:
+    # Set to true after kube-prometheus-stack is deployed (future ArgoCD app)
+    enabled: false

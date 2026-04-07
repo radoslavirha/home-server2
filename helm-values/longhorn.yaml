@@ -1,0 +1,18 @@
+# Longhorn distributed storage
+# Chart: https://charts.longhorn.io — longhorn/longhorn
+
+defaultSettings:
+  # Single-node cluster — only one replica is possible
+  defaultReplicaCount: 1
+  defaultDataLocality: best-effort
+  # Configure a backup target later (e.g. S3/NFS) — leave empty for now
+  backupTarget: ""
+
+longhornManager:
+  tolerations: []
+
+longhornDriver:
+  tolerations: []
+
+longhornUI:
+  tolerations: []
