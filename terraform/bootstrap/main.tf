@@ -43,7 +43,7 @@ data "talos_machine_configuration" "controlplane" {
         machine = {
           install = {
             image        = local.installer_image
-            diskSelector = { type = "nvme" }
+            diskSelector = var.install_disk_selector
             wipe         = true
           }
         }
@@ -78,7 +78,7 @@ data "talos_machine_configuration" "worker" {
       machine = {
         install = {
           image        = local.installer_image
-          diskSelector = { type = "nvme" }
+          diskSelector = var.install_disk_selector
           wipe         = true
         }
       }

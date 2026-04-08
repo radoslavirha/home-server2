@@ -54,6 +54,18 @@ variable "talos_schematic_id" {
   default     = "613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245"
 }
 
+# ── OS install disk ────────────────────────────────────────────────────────
+# Selector passed to machine.install.diskSelector in the Talos machine config.
+# Keys map directly to Talos diskSelector fields (type, model, wwid, etc.).
+variable "install_disk_selector" {
+  type        = map(string)
+  description = "Talos diskSelector for the OS install disk."
+  default     = { type = "nvme" }
+  # Examples:
+  # install_disk_selector = { type = "sata" }
+  # install_disk_selector = { wwid = "naa.50026b725b05e218" }
+}
+
 # ── Longhorn data disks ──────────────────────────────────────────────────────
 # Optional: configure a dedicated SATA SSD for Longhorn storage on specific nodes.
 # If a node IP is not listed here, Longhorn stores data on the OS (NVMe) disk.
