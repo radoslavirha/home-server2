@@ -3,10 +3,10 @@
 # time and preserved by ignoreDifferences in the self-management Application.
 # This file is also consumed by the ArgoCD self-management Application.
 global:
-  domain: argocd.server.home
+  domain: argocd.server2.home
 
 notifications:
-  argocdUrl: http://argocd.server.home
+  argocdUrl: http://argocd.server2.home
 
 configs:
   params:
@@ -33,7 +33,7 @@ server:
       - name: traefik-gateway
         namespace: traefik
     hostnames:
-      - argocd.server.home
+      - argocd.server2.home
     rules:
       - matches:
           - path:
@@ -45,7 +45,7 @@ server:
       - name: traefik-gateway
         namespace: traefik
     hostnames:
-      - grpc.argocd.server.home
+      - grpc.argocd.server2.home
     rules:
       - matches:
           - headers:
