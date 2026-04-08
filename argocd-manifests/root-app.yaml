@@ -1,0 +1,24 @@
+# App of Apps root Application.
+# Terraform applies this once. Every file added to argocd-manifests/apps/ is
+# automatically picked up by ArgoCD and deployed as a child Application.
+# Add future apps (Traefik, cert-manager, etc.) to argocd-manifests/apps/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/radoslavirha/home-server2
+    targetRevision: HEAD
+    path: argocd-manifests/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

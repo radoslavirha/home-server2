@@ -1,0 +1,32 @@
+# ArgoCD Helm values.
+# No secrets here — the admin password hash is injected by Terraform at bootstrap
+# time and preserved by ignoreDifferences in the self-management Application.
+# This file is also consumed by the ArgoCD self-management Application.
+
+configs:
+  params:
+    # Run in HTTP mode; TLS will be terminated externally by Traefik (later).
+    server.insecure: "true"
+  cm:
+    admin.enabled: "true"
+  secret:
+    # argocd-secret is managed externally (Terraform now, ESO/Vault later).
+    # Helm must not create or overwrite it.
+    createSecret: false
+
+# Disable Dex — no SSO/OIDC needed initially. Re-enable when adding OIDC.
+dex:
+  enabled: false
+
+# Single-node cluster: 1 replica is sufficient everywhere.
+server:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+controller:
+  replicas: 1

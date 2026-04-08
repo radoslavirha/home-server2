@@ -39,3 +39,6 @@ override.tf.json
 .vscode/settings.json
 *.swp
 *.swo
+
+secrets/*.yaml
+!secrets/*.sops.yaml

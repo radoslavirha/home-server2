@@ -1,2 +1,2 @@
-# Add application-specific variable values here.
-# Example: argocd_version = "7.8.23"
+# Run: helm search repo argo/argo-cd --versions  to find the latest version.
+argocd_chart_version = "9.4.17"
