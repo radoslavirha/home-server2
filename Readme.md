@@ -1,38 +1,56 @@
 # Home Server 2
 
-Kubernetes-based home server infrastructure provisioned with Terraform.
-GitOps deployment (ArgoCD) will be layered on top in a later phase.
+Kubernetes-based home server infrastructure provisioned with Terraform and GitOps (ArgoCD).
 
 ## Repository layout
 
 ```
 home-server2/
-├── credentials/          ← GITIGNORED — kubeconfig + talosconfig (written by Terraform)
+├── argocd-manifests/
+│   ├── root-app.yaml         ← App-of-Apps root (applied once by Terraform)
+│   └── apps/                 ← One file per ArgoCD Application (auto-synced)
+│       ├── traefik.yaml
+│       ├── hubble.yaml
+│       ├── headlamp.yaml
+│       ├── longhorn-ui.yaml
+│       └── external-dns.yaml
+├── credentials/              ← GITIGNORED — kubeconfig + talosconfig (written by Terraform)
 ├── docs/
-│   └── secrets.md        ← Secrets strategy, backup guide, SOPS/remote-backend notes
-├── helm-values/
-│   ├── cilium.yaml       ← Cilium Helm values
-│   └── longhorn.yaml     ← Longhorn Helm values
+│   └── secrets.md            ← Secrets strategy, backup guide, SOPS/remote-backend notes
+├── helm-values/              ← Helm values files referenced by ArgoCD Applications
+│   ├── argocd.yaml
+│   ├── cilium.yaml
+│   ├── external-dns.yaml
+│   ├── headlamp.yaml
+│   ├── longhorn.yaml
+│   └── traefik.yaml
+├── k8s-manifests/            ← Raw Kubernetes manifests deployed via ArgoCD
+│   ├── cilium/
+│   │   └── HTTPRoute.yaml        ← Hubble UI route
+│   ├── external-dns/
+│   │   └── SealedSecret.yaml     ← Unifi credentials (re-seal before apply)
+│   └── longhorn/
+│       └── HTTPRoute.yaml        ← Longhorn UI route
 ├── talos/
-│   └── patches/          ← Machine config patches (no secrets — safe to commit)
-│       ├── cilium.yaml       Disable default CNI + kube-proxy
-│       └── scheduling.yaml   Allow scheduling on control-plane (single-node)
+│   └── patches/              ← Machine config patches (no secrets — safe to commit)
+│       ├── cilium.yaml           Disable default CNI + kube-proxy
+│       └── scheduling.yaml       Allow scheduling on control-plane (single-node)
 └── terraform/
-    ├── bootstrap/        ← Phase 1: Talos machine secrets, config, credentials/
+    ├── bootstrap/            ← Phase 1: Talos machine secrets, config, credentials/
     │   ├── versions.tf
     │   ├── providers.tf
     │   ├── variables.tf
     │   ├── terraform.tfvars
     │   ├── main.tf
     │   └── outputs.tf
-    ├── platform/         ← Phase 2: Gateway API CRDs, Cilium, Longhorn
+    ├── platform/             ← Phase 2: Gateway API CRDs, Cilium, Longhorn
     │   ├── versions.tf
     │   ├── providers.tf
     │   ├── variables.tf
     │   ├── terraform.tfvars
     │   ├── main.tf
     │   └── outputs.tf
-    └── apps/             ← Phase 3: ArgoCD, cert-manager, etc.
+    └── apps/                 ← Phase 3: ArgoCD (root app bootstrapped here)
         ├── versions.tf
         ├── providers.tf
         ├── variables.tf
@@ -54,6 +72,17 @@ from that known path — no `terraform_remote_state` needed.
 | [Cilium](https://docs.cilium.io/) | CNI (eBPF), kube-proxy replacement, Hubble observability, **Gateway API controller** | 1.19.2 | Terraform (Helm) |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | Standard Kubernetes ingress/routing CRDs | v1.2.1 | Terraform (`kubectl apply`) |
 | [Longhorn](https://longhorn.io/) | Distributed block storage | 1.11.1 | Terraform (Helm) |
+| [ArgoCD](https://argoproj.github.io/cd/) | GitOps continuous delivery (App-of-Apps) | 9.4.17 (chart) | Terraform (Helm), then self-managed |
+
+### GitOps applications (ArgoCD App-of-Apps)
+
+| Application | Purpose | Hostname | Chart version |
+|-------------|---------|----------|--------------|
+| [Traefik](https://traefik.io/) | Ingress / Gateway API proxy, bare-metal load balancer | `traefik.server2.home` | 39.0.5 |
+| [Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/) | Cilium network observability UI | `hubble.server2.home` | built into Cilium |
+| [Headlamp](https://headlamp.dev/) | Kubernetes web UI | `headlamp.server2.home` | 0.41.0 |
+| [Longhorn UI](https://longhorn.io/) | Distributed storage UI (HTTPRoute into existing release) | `longhorn.server2.home` | built into Longhorn |
+| [External DNS](https://kubernetes-sigs.github.io/external-dns/) | Auto DNS via UniFi webhook | — | 1.20.0 |
 
 ## Cluster facts
 
