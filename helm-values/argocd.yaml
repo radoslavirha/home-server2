@@ -145,7 +145,7 @@ repoServer:
           subPath: sops
         # Plugin definition (key "sops.yaml" from argocd-cmp-cm ConfigMap)
         - name: argocd-cmp-cm
-          mountPath: /home/argocd/cmp-server/plugin.yaml
+          mountPath: /home/argocd/cmp-server/config/plugin.yaml
           subPath: sops.yaml
 
 applicationSet:
