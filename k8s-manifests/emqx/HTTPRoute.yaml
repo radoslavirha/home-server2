@@ -1,0 +1,24 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: emqx
+  namespace: mqtt
+  labels:
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: mqtt
+    app.kubernetes.io/environment: mqtt
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+  hostnames:
+    - mqtt.server2.home
+  rules:
+    - backendRefs:
+        - name: emqx
+          namespace: mqtt
+          port: 18083

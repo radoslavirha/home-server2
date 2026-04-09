@@ -1,0 +1,21 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: emqx-mqtt
+  namespace: mqtt
+  labels:
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/component: broker
+    app.kubernetes.io/part-of: mqtt
+    app.kubernetes.io/environment: mqtt
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+spec:
+  entryPoints:
+    - mqtt
+  routes:
+    - match: HostSNI(`*`)
+      services:
+        - name: emqx
+          port: 1883

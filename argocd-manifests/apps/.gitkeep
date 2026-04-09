@@ -1,3 +1,0 @@
-# Add ArgoCD Application manifests here.
-# Each file becomes a child Application managed by the root App of Apps.
-# Examples: traefik.yaml, cert-manager.yaml, longhorn-ui.yaml
