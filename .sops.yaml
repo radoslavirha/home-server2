@@ -1,4 +1,8 @@
 # .sops.yaml
 creation_rules:
+  # Terraform input value files
   - path_regex: secrets/.*\.yaml$
+    age: age1te8tx6p52w4jwh7gvrsze2yydy52uncnsxe9g8pk7n65emlvl3qsyrwjc5
+  # SOPS-encrypted Kubernetes manifests deployed via ArgoCD CMP
+  - path_regex: k8s-manifests/.*\.sops\.yaml$
     age: age1te8tx6p52w4jwh7gvrsze2yydy52uncnsxe9g8pk7n65emlvl3qsyrwjc5

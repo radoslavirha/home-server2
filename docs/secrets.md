@@ -12,6 +12,9 @@ This repository contains **no secrets**. The approach for server2:
 | Helm values | `helm-values/*.yaml` — no secrets in these | ✅ |
 | Talos patches | `talos/patches/*.yaml` — no secrets | ✅ |
 | Terraform variable values | `terraform/bootstrap/terraform.tfvars`, `terraform/platform/terraform.tfvars` — IPs + versions only | ✅ |
+| ArgoCD admin password | `secrets/argocd.sops.yaml` — SOPS/age encrypted, read by Terraform at bootstrap | ✅ |
+| App secrets | `k8s-manifests/**/*.sops.yaml` — SOPS/age encrypted, decrypted by ArgoCD CMP | ✅ |
+| age private key | `{path to}/sops/age/keys.txt` — operator machine only, bootstrapped into cluster once via `kubectl create secret` | ❌ |
 
 ## What to back up
 
@@ -31,23 +34,92 @@ If the **bootstrap** state is lost, the cluster must be re-created (`talosctl re
 If only platform/apps state is lost, run `terraform apply` in the affected module to reconcile
 Terraform's view with the live cluster.
 
-## Future: encrypting secrets with SOPS + age
+## SOPS + age
 
-When you want secrets (e.g. ArgoCD values, application passwords) committed to git:
+Secrets are encrypted with [SOPS](https://github.com/getsops/sops) using an [age](https://github.com/FiloSottile/age) key. The `.sops.yaml` at the repo root defines which paths are covered and with which public key.
 
-1. Install [age](https://github.com/FiloSottile/age) and [SOPS](https://github.com/getsops/sops)
-2. Generate a key: `age-keygen -o ~/.config/sops/age/keys.txt`
-3. Create `.sops.yaml` at the repo root:
-   ```yaml
-   creation_rules:
-     - path_regex: secrets/.*\.yaml$
-       age: >-
-         <your-age-public-key>
+There are **two categories** of SOPS-encrypted files with different consumers:
+
+| Path | Consumer | Format |
+|------|----------|--------|
+| `secrets/*.sops.yaml` | Terraform (`data "sops_file"`) | Plain key: value YAML |
+| `k8s-manifests/**/*.sops.yaml` | ArgoCD SOPS CMP sidecar | Full Kubernetes manifest |
+
+### ArgoCD SOPS CMP (Config Management Plugin)
+
+ArgoCD's repo-server runs a sidecar (`sops-cmp`) that decrypts `*.sops.yaml` files during sync. The sidecar:
+- gets the `sops` binary via an initContainer that downloads it at startup
+- gets the age private key from the `sops-age-key` Kubernetes secret (bootstrapped once via `kubectl create secret`, see Step 3 in the Readme)
+- outputs the decrypted manifest YAML, which ArgoCD applies normally
+
+An Application source enables the plugin explicitly:
+```yaml
+sources:
+  - repoURL: https://github.com/radoslavirha/home-server2
+    path: k8s-manifests/my-app
+    plugin:
+      name: sops
+```
+
+### Adding a new app secret (ArgoCD-managed)
+
+```bash
+# 1. Write the plaintext k8s Secret manifest to a temp file (NOT inside the repo)
+cat > /tmp/my-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: my-app
+type: Opaque
+stringData:
+  key: REAL_VALUE_HERE
+EOF
+
+# 2. Encrypt it in-place to the target path in k8s-manifests/
+mkdir -p k8s-manifests/my-app
+sops --encrypt /tmp/my-secret.yaml > k8s-manifests/my-app/my-secret.sops.yaml
+rm /tmp/my-secret.yaml  # never leave plaintext in the repo
+
+# 3. Commit the encrypted file
+git add k8s-manifests/my-app/my-secret.sops.yaml
+
+# 4. Add the sops source to the ArgoCD Application manifest
+#    (see argocd-manifests/apps/external-dns.yaml for an example)
+```
+
+
+
+### Adding a Terraform-consumed secret (e.g. ArgoCD admin password)
+
+1. Create plaintext values file (gitignored by `secrets/*.yaml` pattern):
+   ```bash
+   echo "my_key: CHANGEME" > secrets/my-app.yaml
    ```
-4. Encrypt a file: `sops -e -i secrets/my-secret.yaml`
-5. Decrypt for use: `sops -d secrets/my-secret.yaml`
-6. Use [terraform-provider-sops](https://github.com/carlpett/terraform-provider-sops) to consume
-   encrypted secrets directly in Terraform.
+2. Fill in the real value, encrypt, commit:
+   ```bash
+   sops -e secrets/my-app.yaml > secrets/my-app.sops.yaml
+   git add secrets/my-app.sops.yaml
+   ```
+3. Reference in Terraform:
+   ```hcl
+   data "sops_file" "my_app" {
+     source_file = "../../secrets/my-app.sops.yaml"
+   }
+   ```
+
+### Key management
+
+The age private key lives at `{path to}/sops/age/keys.txt` (or `$SOPS_AGE_KEY_FILE`). Back it up securely — losing it means all SOPS-encrypted files must be re-created.
+
+The key is bootstrapped into the cluster **once** during initial setup (see Step 3a in the Readme):
+```bash
+kubectl create secret generic sops-age-key \
+  --namespace argocd \
+  --from-file=keys.txt="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+After that, Terraform never touches it. The secret persists in the cluster independent of any CI/CD tooling.
 
 ## Future: remote Terraform backend
 

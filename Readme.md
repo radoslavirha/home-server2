@@ -144,7 +144,22 @@ terraform init
 terraform apply -auto-approve
 ```
 
-### Step 3 — Deploy apps
+### Step 3 — Bootstrap the SOPS age key (once only)
+
+After ArgoCD is running, push the age private key into the cluster so the SOPS CMP sidecar can
+decrypt `*.sops.yaml` manifests. This is a one-time manual step — the key is never stored in git
+or Terraform state.
+
+```bash
+kubectl create secret generic sops-age-key \
+  --namespace argocd \
+  --from-file=keys.txt="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+The `--dry-run=client | apply` pattern makes the command idempotent (safe to re-run).
+
+### Step 4 — Deploy apps
 
 ```bash
 cd terraform/apps
@@ -189,6 +204,12 @@ Discover disks before first apply (node must be booted into Talos ISO or install
 ```bash
 talosctl get disks --insecure -n 192.168.1.201
 # Look for TYPE: nvme (install) and TYPE: ssd/hdd (Longhorn candidate)
+```
+
+Wipe secondary disks if needed (e.g. old SSD with invalid format)
+
+```bash
+talosctl wipe disk XXX
 ```
 
 ## Credentials

@@ -42,3 +42,5 @@ override.tf.json
 
 secrets/*.yaml
 !secrets/*.sops.yaml
+
+k8s-manifests/**/*.secret.yaml
