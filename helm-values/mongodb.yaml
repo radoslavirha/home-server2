@@ -1,0 +1,16 @@
+fullnameOverride: mongodb
+
+architecture: standalone
+useStatefulSet: true
+
+auth:
+  enabled: true
+  existingSecret: mongodb
+
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: "longhorn"

@@ -28,7 +28,6 @@ home-server2/
 │   ├── cilium/
 │   │   └── HTTPRoute.yaml        ← Hubble UI route
 │   ├── external-dns/
-│   │   └── SealedSecret.yaml     ← Unifi credentials (re-seal before apply)
 │   └── longhorn/
 │       └── HTTPRoute.yaml        ← Longhorn UI route
 ├── talos/
@@ -83,6 +82,18 @@ from that known path — no `terraform_remote_state` needed.
 | [Headlamp](https://headlamp.dev/) | Kubernetes web UI | `headlamp.server2.home` | 0.41.0 |
 | [Longhorn UI](https://longhorn.io/) | Distributed storage UI (HTTPRoute into existing release) | `longhorn.server2.home` | built into Longhorn |
 | [External DNS](https://kubernetes-sigs.github.io/external-dns/) | Auto DNS via UniFi webhook | — | 1.20.0 |
+
+### Databases
+| Component | Purpose | Status |
+|-----------|---------|--------|
+| [MongoDB](https://artifacthub.io/packages/helm/bitnami/mongodb) | Document database | Auto (ArgoCD) |
+| [InfluxDB 2](https://artifacthub.io/packages/helm/influxdata/influxdb2) | Time series database | Auto (ArgoCD) |
+
+### Message Queue & IoT
+| Component | Purpose | Status |
+|-----------|---------|--------|
+| [EMQX](https://artifacthub.io/packages/helm/emqx-operator/emqx) | MQTT broker | Auto (ArgoCD) |
+| [Telegraf](https://artifacthub.io/packages/helm/influxdata/telegraf) | MQTT ingestion — accepts IoT data over MQTT and writes to InfluxDB | Auto (ArgoCD) |
 
 ## Cluster facts
 
