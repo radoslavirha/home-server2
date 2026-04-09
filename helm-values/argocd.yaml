@@ -58,6 +58,8 @@ server:
     parentRefs:
       - name: traefik-gateway
         namespace: traefik
+        group: gateway.networking.k8s.io
+        kind: Gateway
     hostnames:
       - argocd.server2.home
     rules:
@@ -70,6 +72,8 @@ server:
     parentRefs:
       - name: traefik-gateway
         namespace: traefik
+        group: gateway.networking.k8s.io
+        kind: Gateway
     hostnames:
       - grpc.argocd.server2.home
     rules:
