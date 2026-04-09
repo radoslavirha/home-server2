@@ -1,0 +1,69 @@
+tplVersion: 2
+
+env:
+  - name: INFLUXDB2_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: telegraf-influxdb2-credentials
+        key: INFLUXDB2_TOKEN
+  - name: MQTT_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: telegraf-mqtt-credentials
+        key: MQTT_USERNAME
+  - name: MQTT_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: telegraf-mqtt-credentials
+        key: MQTT_PASSWORD
+
+config:
+  inputs:
+    - statsd:
+        service_address: ":8125"
+        percentiles:
+          - 50
+          - 95
+          - 99
+        metric_separator: "_"
+        allowed_pending_messages: 10000
+        percentile_limit: 1000
+    - mqtt_consumer:
+        servers:
+          - "tcp://emqx.mqtt.svc.cluster.local:1883"
+        topics:
+          - "iot/loxone/state"
+        client_id: "telegraf-consumer-loxone"
+        username: "$MQTT_USERNAME"
+        password: "$MQTT_PASSWORD"
+        data_format: "json_v2"
+        json_v2:
+          - measurement_name_path: "measurement"
+            tag:
+              - path: "room"
+                type: "string"
+            object:
+              - path: "@this"
+                excluded_keys:
+                  - "measurement"
+                  - "room"
+        tags:
+          source: "loxone"
+  processors:
+    - enum:
+        mapping:
+          field: "status"
+          dest: "status_code"
+          value_mappings:
+            healthy: 1
+            problem: 2
+            critical: 3
+  outputs:
+    - influxdb_v2:
+        urls:
+          - "http://influxdb2.monitoring.svc.cluster.local"
+        bucket: "loxone"
+        organization: "home-server"
+        token: "$INFLUXDB2_TOKEN"
+        tagpass:
+          source: ["loxone"]
