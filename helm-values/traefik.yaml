@@ -92,6 +92,9 @@ gateway:
       namespacePolicy:
         from: All
 
+metrics:
+  prometheus: null
+
 # Enable Observability
 logs:
   general:
