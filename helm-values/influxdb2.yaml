@@ -1,0 +1,16 @@
+fullnameOverride: influxdb2
+
+adminUser:
+  organization: home-server
+  existingSecret: influxdb2
+
+service:
+  port: 80
+
+ingress:
+  enabled: false
+
+persistence:
+  enabled: true
+  size: 25Gi
+  storageClass: "longhorn"
