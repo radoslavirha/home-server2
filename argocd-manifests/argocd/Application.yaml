@@ -26,18 +26,8 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
-  ignoreDifferences:
-    # Kubernetes normalizes backendRefs group/kind/name defaults that the chart omits.
-    - group: gateway.networking.k8s.io
-      kind: GRPCRoute
-      jqPathExpressions:
-        - .spec.rules[].backendRefs[].group
-        - .spec.rules[].backendRefs[].kind
-        - .spec.rules[].backendRefs[].name
   syncPolicy:
     automated:
       enabled: true
       prune: true
       selfHeal: true
-    syncOptions:
-      - ServerSideApply=true
