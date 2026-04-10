@@ -1,0 +1,4 @@
+clusterRole:
+  name: otel-collector-opentelemetry-collector-production
+  clusterRoleBinding:
+    name: otel-collector-opentelemetry-collector-production

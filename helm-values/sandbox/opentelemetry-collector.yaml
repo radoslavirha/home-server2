@@ -1,0 +1,5 @@
+clusterRole:
+  name: otel-collector-opentelemetry-collector-sandbox
+  clusterRoleBinding:
+    name: otel-collector-opentelemetry-collector-sandbox
+    

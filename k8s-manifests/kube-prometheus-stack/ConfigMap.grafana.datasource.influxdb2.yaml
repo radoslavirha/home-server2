@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-prometheus-stack-grafana-datasource-influxdb2
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-50"
+  labels:
+    grafana_datasource: "1"
+data:
+  influxdb2.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: InfluxDB2
+        uid: influxdb2
+        type: influxdb
+        access: proxy
+        url: http://influxdb2.monitoring.svc.cluster.local
+        basicAuth: false
+        jsonData:
+          version: Flux
+          organization: home-server
+          defaultBucket: default
+          tlsSkipVerify: true
+        secureJsonData:
+          token: ${INFLUX_DB_2_TOKEN}

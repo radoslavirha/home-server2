@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-prometheus-stack-grafana-datasource-loki
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-50"
+  labels:
+    grafana_datasource: "1"
+data:
+  loki.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: "trace_id"
+              matcherType: "label"
+              name: "TraceID"
+              urlDisplayLabel: "View Trace"
+              url: '$${__value.raw}'
