@@ -8,28 +8,13 @@ Kubernetes-based home server infrastructure provisioned with Terraform and GitOp
 home-server2/
 ├── argocd-manifests/
 │   ├── root-app.yaml         ← App-of-Apps root (applied once by Terraform)
+│   ├── argocd                ← ArgoCD app
 │   └── apps/                 ← One file per ArgoCD Application (auto-synced)
-│       ├── traefik.yaml
-│       ├── hubble.yaml
-│       ├── headlamp.yaml
-│       ├── longhorn-ui.yaml
-│       └── external-dns.yaml
 ├── credentials/              ← GITIGNORED — kubeconfig + talosconfig (written by Terraform)
 ├── docs/
 │   └── secrets.md            ← Secrets strategy, backup guide, SOPS/remote-backend notes
 ├── helm-values/              ← Helm values files referenced by ArgoCD Applications
-│   ├── argocd.yaml
-│   ├── cilium.yaml
-│   ├── external-dns.yaml
-│   ├── headlamp.yaml
-│   ├── longhorn.yaml
-│   └── traefik.yaml
 ├── k8s-manifests/            ← Raw Kubernetes manifests deployed via ArgoCD
-│   ├── cilium/
-│   │   └── HTTPRoute.yaml        ← Hubble UI route
-│   ├── external-dns/
-│   └── longhorn/
-│       └── HTTPRoute.yaml        ← Longhorn UI route
 ├── talos/
 │   └── patches/              ← Machine config patches (no secrets — safe to commit)
 │       ├── cilium.yaml           Disable default CNI + kube-proxy
@@ -63,49 +48,37 @@ from that known path — no `terraform_remote_state` needed.
 
 ## Technology stack
 
-### Core infrastructure
-
-| Component | Purpose | Version | Managed by |
-|-----------|---------|---------|-----------|
-| [Talos Linux](https://www.talos.dev/) | Immutable Kubernetes OS | v1.12.6 | Terraform (`siderolabs/talos`) |
-| [Cilium](https://docs.cilium.io/) | CNI (eBPF), kube-proxy replacement, Hubble observability, **Gateway API controller** | 1.19.2 | Terraform (Helm) |
-| [Gateway API](https://gateway-api.sigs.k8s.io/) | Standard Kubernetes ingress/routing CRDs | v1.2.1 | Terraform (`kubectl apply`) |
-| [Longhorn](https://longhorn.io/) | Distributed block storage | 1.11.1 | Terraform (Helm) |
-| [ArgoCD](https://argoproj.github.io/cd/) | GitOps continuous delivery (App-of-Apps) | 9.4.17 (chart) | Terraform (Helm), then self-managed |
-
-### GitOps applications (ArgoCD App-of-Apps)
-
-| Application | Purpose | Hostname | Chart version |
-|-------------|---------|----------|--------------|
-| [Traefik](https://traefik.io/) | Ingress / Gateway API proxy, bare-metal load balancer | `traefik.server2.home` | 39.0.5 |
-| [Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/) | Cilium network observability UI | `hubble.server2.home` | built into Cilium |
-| [Headlamp](https://headlamp.dev/) | Kubernetes web UI | `headlamp.server2.home` | 0.41.0 |
-| [Longhorn UI](https://longhorn.io/) | Distributed storage UI (HTTPRoute into existing release) | `longhorn.server2.home` | built into Longhorn |
-| [External DNS](https://kubernetes-sigs.github.io/external-dns/) | Auto DNS via UniFi webhook | — | 1.20.0 |
-
-### Databases
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| [MongoDB](https://artifacthub.io/packages/helm/bitnami/mongodb) | Document database | Auto (ArgoCD) |
-| [InfluxDB 2](https://artifacthub.io/packages/helm/influxdata/influxdb2) | Time series database | Auto (ArgoCD) |
-
-### Message Queue & IoT
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| [EMQX](https://artifacthub.io/packages/helm/emqx-operator/emqx) | MQTT broker | Auto (ArgoCD) |
-| [Telegraf](https://artifacthub.io/packages/helm/influxdata/telegraf) | MQTT ingestion — accepts IoT data over MQTT and writes to InfluxDB | Auto (ArgoCD) |
+| Component | Purpose | Version | Artifact Hub | Local values | Upstream `values.yaml` |
+|-----------|---------|---------|-------------|-------------|----------------------|
+| [Talos Linux](https://www.talos.dev/) | Immutable Kubernetes OS | v1.12.6 | — | — | — |
+| [Cilium](https://docs.cilium.io/) | CNI (eBPF), kube-proxy replacement, Hubble, **Gateway API controller** | 1.19.2 | [cilium](https://artifacthub.io/packages/helm/cilium/cilium) | [cilium.yaml](helm-values/cilium.yaml) | [values.yaml @ v1.19.2](https://github.com/cilium/cilium/blob/v1.19.2/install/kubernetes/cilium/values.yaml) |
+| [Gateway API](https://gateway-api.sigs.k8s.io/) | Standard Kubernetes ingress/routing CRDs | v1.2.1 | — | — | — |
+| [Longhorn](https://longhorn.io/) | Distributed block storage | 1.11.1 | [longhorn](https://artifacthub.io/packages/helm/longhorn/longhorn) | [longhorn.yaml](helm-values/longhorn.yaml) | [values.yaml @ v1.11.1](https://github.com/longhorn/longhorn/blob/v1.11.1/chart/values.yaml) |
+| [ArgoCD](https://argoproj.github.io/cd/) | GitOps continuous delivery (App-of-Apps) | 9.5.0 | [argo-cd](https://artifacthub.io/packages/helm/argo/argo-cd) | [argocd.yaml](helm-values/argocd.yaml) | [values.yaml @ argo-cd-9.5.0](https://github.com/argoproj/argo-helm/blob/argo-cd-9.5.0/charts/argo-cd/values.yaml) |
+| [Traefik](https://traefik.io/) | Ingress / Gateway API proxy, bare-metal load balancer | 39.0.7 | [traefik](https://artifacthub.io/packages/helm/traefik/traefik) | [traefik.yaml](helm-values/traefik.yaml) | [values.yaml @ traefik-39.0.7](https://github.com/traefik/traefik-helm-chart/blob/v39.0.7/traefik/values.yaml) |
+| [Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/) | Cilium network observability UI | built into Cilium | — | — | — |
+| [Headlamp](https://headlamp.dev/) | Kubernetes web UI | 0.41.0 | [headlamp](https://artifacthub.io/packages/helm/headlamp/headlamp) | [headlamp.yaml](helm-values/headlamp.yaml) | [values.yaml @ headlamp-chart-0.41.0](https://github.com/kubernetes-sigs/headlamp/blob/v0.41.0/charts/headlamp/values.yaml) |
+| [Longhorn UI](https://longhorn.io/) | Distributed storage UI | built into Longhorn | — | — | — |
+| [External DNS](https://kubernetes-sigs.github.io/external-dns/) | Automatic DNS via UniFi webhook | 1.20.0 | [external-dns](https://artifacthub.io/packages/helm/external-dns/external-dns) | [external-dns.yaml](helm-values/external-dns.yaml) | [values.yaml @ external-dns-helm-chart-1.20.0](https://github.com/kubernetes-sigs/external-dns/blob/external-dns-helm-chart-1.20.0/charts/external-dns/values.yaml) |
+| [MongoDB](https://www.mongodb.com/) | Document database | 18.6.24 | [mongodb](https://artifacthub.io/packages/helm/bitnami/mongodb) | [mongodb.yaml](helm-values/mongodb.yaml) | [values.yaml @ mongodb-18.6.24](https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml) |
+| [InfluxDB 2](https://www.influxdata.com/) | Time series database | 2.1.2 | [influxdb2](https://artifacthub.io/packages/helm/influxdata/influxdb2) | [influxdb2.yaml](helm-values/influxdb2.yaml) | [values.yaml @ influxdb2-2.1.2](https://github.com/influxdata/helm-charts/blob/influxdb2-2.1.2/charts/influxdb2/values.yaml) |
+| [EMQX](https://www.emqx.io/) | MQTT broker | 5.8.9 | [emqx](https://artifacthub.io/packages/helm/emqx-operator/emqx) | [emqx.yaml](helm-values/emqx.yaml) | [values.yaml @ v5.8.9](https://github.com/emqx/emqx/blob/v5.8.9/deploy/charts/emqx/values.yaml) |
+| [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) | MQTT → InfluxDB ingestion | 1.8.69 | [telegraf](https://artifacthub.io/packages/helm/influxdata/telegraf) | [telegraf.yaml](helm-values/telegraf.yaml) | [values.yaml @ telegraf-1.8.69](https://github.com/influxdata/helm-charts/blob/telegraf-1.8.69/charts/telegraf/values.yaml) |
+| [Kube Prometheus Stack](https://github.com/prometheus-operator/kube-prometheus) | Prometheus, Grafana, Alertmanager | 83.4.0 | [kube-prometheus-stack](https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack) | [kube-prometheus-stack.yaml](helm-values/kube-prometheus-stack.yaml) | [values.yaml @ kube-prometheus-stack-83.4.0](https://github.com/prometheus-community/helm-charts/blob/kube-prometheus-stack-83.4.0/charts/kube-prometheus-stack/values.yaml) |
+| [Loki](https://grafana.com/oss/loki/) | Log aggregation | 11.4.8 | [loki](https://artifacthub.io/packages/helm/grafana-community/loki) | [loki.yaml](helm-values/loki.yaml) | [values.yaml @ loki-11.4.8](https://github.com/grafana-community/helm-charts/blob/loki-11.4.8/charts/loki/values.yaml) |
+| [Tempo](https://grafana.com/oss/tempo/) | Distributed tracing | 2.0.0 | [tempo](https://artifacthub.io/packages/helm/grafana-community/tempo) | [tempo.yaml](helm-values/tempo.yaml) | [values.yaml @ tempo-2.0.0](https://github.com/grafana-community/helm-charts/blob/tempo-2.0.0/charts/tempo/values.yaml) |
+| [OTel Collector](https://opentelemetry.io/docs/collector/) | Telemetry pipeline | 0.149.0 | [opentelemetry-collector](https://artifacthub.io/packages/helm/opentelemetry-helm/opentelemetry-collector) | [base](helm-values/opentelemetry-collector.yaml) · [production](helm-values/production/opentelemetry-collector.yaml) · [sandbox](helm-values/sandbox/opentelemetry-collector.yaml) | [values.yaml @ opentelemetry-collector-0.149.0](https://github.com/open-telemetry/opentelemetry-helm-charts/blob/opentelemetry-collector-0.149.0/charts/opentelemetry-collector/values.yaml) |
 
 ## Cluster facts
 
 | Property | Value |
 |----------|-------|
+| Machine | HP EliteDesk 705 G4 Mini |
+| RAM | 32 GB |
+| CPU | Ryzen PRO 2400GE |
+| Install disk | M.2 NVMe 256 GB |
+| Storage disk (Longhorn) | SATA SSD 256 GB |
 | Node IP | `192.168.1.201` |
-| API endpoint | `https://192.168.1.201:6443` |
-| Install disk | NVMe — selected via `diskSelector: {type: nvme}` |
-| Network interface | `eno1` |
-| Talos version | `v1.12.6` |
-| Kubernetes version | `1.35.2` |
-| Cluster type | Single-node (control-plane + worker) |
 
 ### Talos Image Factory schematic
 
