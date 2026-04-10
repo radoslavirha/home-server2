@@ -13,8 +13,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: longhorn-system
   syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
     automated:
+      enabled: true
       selfHeal: true
       prune: false

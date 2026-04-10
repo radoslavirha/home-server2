@@ -21,8 +21,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: sandbox
   syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
     automated:
       enabled: true
       selfHeal: true
