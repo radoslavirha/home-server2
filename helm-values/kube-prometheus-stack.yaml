@@ -21,7 +21,9 @@ grafana:
       hostnames:
         - grafana.server2.home
       parentRefs:
-        - name: traefik-gateway
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: traefik-gateway
           namespace: traefik
   envFromSecrets:
     - name: kube-prometheus-stack-grafana-auth-datasource-influxdb2
