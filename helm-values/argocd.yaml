@@ -76,8 +76,10 @@ server:
       - grpc.argocd.server2.home
     rules:
       - matches:
-          - method:
-              type: Exact
+          - headers:
+              - name: Content-Type
+                type: RegularExpression
+                value: "^application/grpc.*$"
 
 repoServer:
   replicas: 1
