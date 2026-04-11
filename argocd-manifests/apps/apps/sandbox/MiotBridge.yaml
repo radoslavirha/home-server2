@@ -1,28 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: telegraf
+  name: miot-bridge-api-iot-sandbox
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: default
   sources:
-    - repoURL: https://helm.influxdata.com
-      chart: telegraf
-      targetRevision: 1.8.69
+    - repoURL: https://github.com/radoslavirha/home-server2
+      targetRevision: HEAD
+      path: helm-charts/iot-applications
       helm:
+        releaseName: miot-bridge-api-iot
         valueFiles:
-          - $values/helm-values/telegraf.yaml
+          - $values/helm-values/miot-bridge.yaml
+          - $values/helm-values/sandbox/miot-bridge.yaml
+          - $values/helm-values/sandbox/variables.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/telegraf
+      path: k8s-manifests/sandbox/miot-bridge-api
   destination:
     server: https://kubernetes.default.svc
-    namespace: telegraf
+    namespace: sandbox
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

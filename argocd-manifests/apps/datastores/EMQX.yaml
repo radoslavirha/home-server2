@@ -1,29 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: influxdb2
+  name: emqx
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: default
   sources:
-    - repoURL: https://helm.influxdata.com
-      chart: influxdb2
-      targetRevision: 2.1.2
+    - repoURL: https://repos.emqx.io/charts
+      chart: emqx
+      targetRevision: 5.8.9
       helm:
         valueFiles:
-        - $values/helm-values/influxdb2.yaml
+          - $values/helm-values/emqx.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/influxdb2
-  destination: 
+      path: k8s-manifests/emqx
+  destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: mqtt
   syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
     automated:
       enabled: true
       selfHeal: true

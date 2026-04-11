@@ -23,7 +23,12 @@ Helm values overrides are in `helm-values/` and referenced by ArgoCD manifests, 
 
 ### 2. ArgoCD-managed (GitOps)
 
-All other apps. Each app has an `argocd-manifests/apps/<Name>.yaml` (Application CRD).
+All other apps. Each app has an Application CRD in the appropriate subdirectory:
+- `argocd-manifests/apps/gateway/` — Traefik, ExternalDNS
+- `argocd-manifests/apps/datastores/` — EMQX, MongoDB, InfluxDB2, Loki, Tempo
+- `argocd-manifests/apps/observability/` — KubePrometheusStack, Headlamp, Hubble, LonghornUI, Telegraf, OTel
+- `argocd-manifests/apps/apps/` — MiotBridge, InteractiveMapFeeder (prod + sandbox)
+
 Version is `targetRevision` in that file. ArgoCD auto-syncs on commit — no manual apply needed.
 
 Helm values overrides live in `helm-values/<name>.yaml` (or subdirectories for environment variants) and are referenced via `$values` multi-source in the Application manifest.
@@ -34,7 +39,7 @@ Raw Kubernetes manifests (HTTPRoutes, Secrets, ConfigMaps) live in `k8s-manifest
 
 When changing any version:
 
-1. **ArgoCD app** — update `targetRevision` in `argocd-manifests/apps/<Name>.yaml`
+1. **ArgoCD app** — update `targetRevision` in the Application CRD under `argocd-manifests/apps/<group>/<Name>.yaml`
 2. **Terraform component** — update the variable in the relevant `terraform.tfvars`
 3. **Always** update the `Version` column in the `## Technology stack` table in [Readme.md](Readme.md)
 4. **Always** update the `Upstream values.yaml` link in that same table row to the new version tag
@@ -54,7 +59,8 @@ The upstream `values.yaml` links are version-pinned GitHub blob URLs. Tag format
 
 ## Adding a new ArgoCD app
 
-1. Create `argocd-manifests/apps/<Name>.yaml` — copy an existing Application as a template.
+1. Create `argocd-manifests/apps/<group>/<Name>.yaml` — copy an existing Application from the same group as a template.
+   Choose the group that matches the app's role: `gateway`, `datastores`, `observability`, or `apps`.
 2. Add helm values override at `helm-values/<name>.yaml`.
 3. Add raw manifests to `k8s-manifests/<name>/` if needed.
 4. Add a row to the `## Technology stack` table in [Readme.md](Readme.md) with all required columns.

@@ -1,18 +1,17 @@
-# App of Apps root Application.
-# Terraform applies this once. Every file added to argocd-manifests/apps/ is
-# automatically picked up by ArgoCD and deployed as a child Application.
-# Add future apps (Traefik, cert-manager, etc.) to argocd-manifests/apps/.
+# Gateway App-of-Apps root: Traefik + ExternalDNS.
+# Applied once by Terraform (terraform/apps). ArgoCD auto-syncs from that point on.
+# Manual apply on rebuild: kubectl apply -f argocd-manifests/Root-gateway.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: root-gateway
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/radoslavirha/home-server2
     targetRevision: HEAD
-    path: argocd-manifests/apps
+    path: argocd-manifests/apps/gateway
     directory:
       recurse: true
   destination:

@@ -1,19 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: hubble-ui
+  name: longhorn-ui
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: default
   sources:
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/cilium
+      path: k8s-manifests/longhorn
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: longhorn-system
   syncPolicy:
     automated:
       enabled: true

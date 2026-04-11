@@ -1,33 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: external-dns
+  name: kube-prometheus-stack
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   sources:
-    - repoURL: https://kubernetes-sigs.github.io/external-dns/
-      chart: external-dns
-      targetRevision: 1.20.0
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 83.4.0
       helm:
         valueFiles:
-          - $values/helm-values/external-dns.yaml
+        - $values/helm-values/kube-prometheus-stack.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/external-dns
-      plugin:
-        name: sops
-  destination:
+      path: k8s-manifests/kube-prometheus-stack
+  destination: 
     server: https://kubernetes.default.svc
-    namespace: external-dns
+    namespace: monitoring
   syncPolicy:
     syncOptions:
-      - CreateNamespace=true
+      - ServerSideApply=true
     automated:
       enabled: true
       selfHeal: true

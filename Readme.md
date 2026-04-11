@@ -7,9 +7,16 @@ Kubernetes-based home server infrastructure provisioned with Terraform and GitOp
 ```
 home-server2/
 ├── argocd-manifests/
-│   ├── root-app.yaml         ← App-of-Apps root (applied once by Terraform)
-│   ├── argocd                ← ArgoCD app
-│   └── apps/                 ← One file per ArgoCD Application (auto-synced)
+│   ├── ArgoCD/               ← ArgoCD self-management Application
+│   ├── RootApps.yaml         ← App-of-Apps: production + sandbox workloads (applied manually)
+│   ├── RootDatastores.yaml  ← App-of-Apps: EMQX, MongoDB, InfluxDB2, Loki, Tempo (applied manually)
+│   ├── RootGateway.yaml     ← App-of-Apps: Traefik + ExternalDNS (applied by Terraform)
+│   ├── RootObservability.yaml ← App-of-Apps: KubePrometheusStack, Telegraf, OTel, UI tools (applied manually)
+│   └── apps/
+│       ├── gateway/          ← root-gateway: Traefik, ExternalDNS
+│       ├── datastores/       ← root-datastores: EMQX, MongoDB, InfluxDB2, Loki, Tempo
+│       ├── observability/    ← root-observability: KubePrometheusStack, Headlamp, Hubble, LonghornUI, Telegraf, OTel
+│       └── apps/             ← root-apps: MiotBridge, InteractiveMapFeeder (prod + sandbox)
 ├── credentials/              ← GITIGNORED — kubeconfig + talosconfig (written by Terraform)
 ├── docs/
 │   └── secrets.md            ← Secrets strategy, backup guide, SOPS/remote-backend notes
@@ -34,12 +41,13 @@ home-server2/
     │   ├── terraform.tfvars
     │   ├── main.tf
     │   └── outputs.tf
-    └── apps/                 ← Phase 3: ArgoCD (root app bootstrapped here)
+    └── apps/                 ← Phase 3: ArgoCD (bootstrapped here, then self-managed)
         ├── versions.tf
         ├── providers.tf
         ├── variables.tf
         ├── terraform.tfvars
-        └── main.tf
+        ├── argocd.tf
+        └── argocd-self-manage.tf
 ```
 
 Terraform modules share state via a file convention: `bootstrap/` writes credentials to the
@@ -143,7 +151,7 @@ kubectl create secret generic sops-age-key \
 
 The `--dry-run=client | apply` pattern makes the command idempotent (safe to re-run).
 
-### Step 4 — Deploy apps
+### Step 4 — Deploy ArgoCD
 
 ```bash
 cd terraform/apps
@@ -151,47 +159,54 @@ terraform init
 terraform apply -auto-approve
 ```
 
+This installs ArgoCD via Helm and applies the self-management Application.
+All `Root*.yaml` are applied manually — continue with the [deployment roots sequence](#bootstrap-sequence-first-install).
+
 > Subsequent runs: `terraform apply -auto-approve` inside whichever module changed. Each module is
 > independent — updating a chart version in `platform/` does not touch `bootstrap/`.
 
-## ArgoCD sync waves
+## ArgoCD deployment roots
 
-The root App-of-Apps deploys every Application CRD in `argocd-manifests/apps/` in a single sync.
-Sync waves control the **cross-app deployment order**: ArgoCD waits for all apps in wave N to become
-**Healthy** before starting wave N+10.
+Instead of a single App-of-Apps, the cluster uses **four independent root Applications**, each
+pointing to a subdirectory of `argocd-manifests/apps/`. This gives a hard manual gate between
+deployment phases — crucial for the initial credential ceremony and for controlled rebuilds where
+data must be restored before consumers start.
 
-Each Application manifest carries `argocd.argoproj.io/sync-wave` in its `metadata.annotations`.
+| Root | Directory | Apps | Applied by |
+|------|-----------|------|------------|
+| `RootApps` | `apps/apps/` | MiotBridge ×2, InteractiveMapFeeder ×2 | Manual |
+| `RootDatastores` | `apps/datastores/` | EMQX, MongoDB, InfluxDB2, Loki, Tempo | Manual |
+| `RootGateway` | `apps/gateway/` | Traefik, ExternalDNS | Manual |
+| `RootObservability` | `apps/observability/` | KubePrometheusStack, Headlamp, Hubble UI, Longhorn UI, Telegraf, OTel Collector ×2 | Manual |
 
-| Wave | Apps | Why |
-|------|------|-----|
-| **0** | Traefik, ExternalDNS | Gateway + DNS must exist before any HTTPRoute or hostname is useful |
-| **10** | EMQX, MongoDB, InfluxDB2, Loki, Tempo | Data stores and log/trace backends. **Manual credential ceremony happens here** (see below) |
-| **20** | KubePrometheusStack, Headlamp, Hubble UI, Longhorn UI, Telegraf, OTel Collector (prod + sandbox) | Observability stack and data consumers — depend on wave-10 stores being ready |
-| **40** | MiotBridge (prod + sandbox), InteractiveMapFeeder (prod + sandbox) | Application workloads — depend on all infrastructure and observability being healthy |
+Once a root Application is applied it is **fully GitOps** — ArgoCD auto-syncs every commit.
+The manual gate only matters on first install and on rebuilds.
 
-> Wave 30 is intentionally skipped to leave room for future intermediate apps.
+### Bootstrap sequence (first install)
+
+```
+Terraform apply  →  ArgoCD healthy
+                 →  [install Traefik, external DNS]
+                 →  kubectl apply -f argocd-manifests/RootGateway.yaml
+                 →  root gateway healthy
+                 →  [create EMQX/MongoDB/InfluxDB2 credentials, sops-encrypt, git push]
+                 →  kubectl apply -f argocd-manifests/RootDatastores.yaml
+                 →  root datastores healthy
+                 →  kubectl apply -f argocd-manifests/RootObservability.yaml
+                 →  root observability healthy
+                 →  kubectl apply -f argocd-manifests/RootApps.yaml
+```
 
 ### Intra-app waves (resource-level ordering within a single Application)
 
-Inside each Application, individual Kubernetes resources also carry sync-wave annotations:
+Inside each Application, individual Kubernetes resources carry sync-wave annotations to control
+the deployment order of resources within that app:
 
 | Wave | Resource type | Example |
 |------|--------------|---------|
 | `-100` | Namespaces | `kube-prometheus-stack/Namespace.yaml` |
 | `-50` | ConfigMaps that must precede Helm chart pods | Grafana datasource ConfigMaps |
 | `+100` | HTTPRoutes / IngressRouteTCPs | All `**/HTTPRoute.yaml`, `**/IngressRoute*.yaml` |
-
-These waves are **scoped to the child Application** and are independent of the cross-app waves above.
-
-### Manual credential ceremony (wave 10 → wave 20 gap)
-
-After wave-10 apps are Healthy, before wave-20 apps can fully function:
-
-1. Create users/tokens in the EMQX, MongoDB, and InfluxDB2 UIs.
-2. Encrypt the credentials: `sops --encrypt --in-place k8s-manifests/<app>/credentials.sops.yaml`
-3. Commit and push — ArgoCD picks up the secrets; wave-20 apps self-heal automatically.
-
-Wave-20 apps will be in `Degraded` state until step 3 is complete. This is expected behaviour.
 
 ## Config patches
 
@@ -324,7 +339,7 @@ Wait for the node to reach maintenance mode (~1 min), then re-apply from Step 1 
 ## Provider versions
 
 | Provider | Source | Version |
-|----------|--------|---------|
+|----------|--------|--------|
 | Talos | `siderolabs/talos` | `0.11.0-beta.2` |
 | Helm | `hashicorp/helm` | `3.1.1` |
 | Local | `hashicorp/local` | `2.8.0` |

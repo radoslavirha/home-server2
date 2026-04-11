@@ -1,31 +1,27 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mongodb
+  name: influxdb2
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: default
   sources:
-    - repoURL: https://charts.bitnami.com/bitnami
-      chart: mongodb
-      targetRevision: 18.6.24
+    - repoURL: https://helm.influxdata.com
+      chart: influxdb2
+      targetRevision: 2.1.2
       helm:
         valueFiles:
-          - $values/helm-values/mongodb.yaml
+        - $values/helm-values/influxdb2.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/mongodb
-  destination:
+      path: k8s-manifests/influxdb2
+  destination: 
     server: https://kubernetes.default.svc
-    namespace: mongodb
+    namespace: monitoring
   syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
     automated:
       enabled: true
       selfHeal: true

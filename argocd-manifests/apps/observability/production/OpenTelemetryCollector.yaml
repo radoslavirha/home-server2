@@ -1,25 +1,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: loki
+  name: otel-collector-production
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: default
   sources:
-    - repoURL: https://grafana-community.github.io/helm-charts
-      chart: loki
-      targetRevision: 11.4.8
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-collector
+      targetRevision: 0.149.0
       helm:
+        releaseName: otel-collector
         valueFiles:
-          - $values/helm-values/loki.yaml
+          - $values/helm-values/opentelemetry-collector.yaml
+          - $values/helm-values/production/opentelemetry-collector.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: production
   syncPolicy:
     automated:
       enabled: true

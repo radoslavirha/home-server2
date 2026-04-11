@@ -1,10 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: interactive-map-feeder-api-iot-production
+  name: miot-bridge-api-iot-production
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "40"
 spec:
   project: default
   sources:
@@ -12,14 +10,17 @@ spec:
       targetRevision: HEAD
       path: helm-charts/iot-applications
       helm:
-        releaseName: interactive-map-feeder-api-iot
+        releaseName: miot-bridge-api-iot
         valueFiles:
-          - $values/helm-values/interactive-map-feeder.yaml
-          - $values/helm-values/production/interactive-map-feeder.yaml
+          - $values/helm-values/miot-bridge.yaml
+          - $values/helm-values/production/miot-bridge.yaml
           - $values/helm-values/production/variables.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
+    - repoURL: https://github.com/radoslavirha/home-server2
+      targetRevision: HEAD
+      path: k8s-manifests/production/miot-bridge-api
   destination:
     server: https://kubernetes.default.svc
     namespace: production

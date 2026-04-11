@@ -1,0 +1,26 @@
+# Apps App-of-Apps root: application workloads (production + sandbox).
+# Apply manually after root-observability is healthy and all credentials are in place.
+# kubectl apply -f argocd-manifests/Root-apps.yaml
+#
+# On rebuild: apply only after data restore and all lower roots are stable.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/radoslavirha/home-server2
+    targetRevision: HEAD
+    path: argocd-manifests/apps/apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true

@@ -1,31 +1,26 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: miot-bridge-api-iot-sandbox
+  name: mongodb
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "40"
 spec:
   project: default
   sources:
-    - repoURL: https://github.com/radoslavirha/home-server2
-      targetRevision: HEAD
-      path: helm-charts/iot-applications
+    - repoURL: https://charts.bitnami.com/bitnami
+      chart: mongodb
+      targetRevision: 18.6.24
       helm:
-        releaseName: miot-bridge-api-iot
         valueFiles:
-          - $values/helm-values/miot-bridge.yaml
-          - $values/helm-values/sandbox/miot-bridge.yaml
-          - $values/helm-values/sandbox/variables.yaml
+          - $values/helm-values/mongodb.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/sandbox/miot-bridge-api
+      path: k8s-manifests/mongodb
   destination:
     server: https://kubernetes.default.svc
-    namespace: sandbox
+    namespace: mongodb
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

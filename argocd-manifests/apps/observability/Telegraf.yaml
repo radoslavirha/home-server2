@@ -1,31 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kube-prometheus-stack
+  name: telegraf
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: default
   sources:
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: 83.4.0
+    - repoURL: https://helm.influxdata.com
+      chart: telegraf
+      targetRevision: 1.8.69
       helm:
         valueFiles:
-        - $values/helm-values/kube-prometheus-stack.yaml
+          - $values/helm-values/telegraf.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
-      path: k8s-manifests/kube-prometheus-stack
-  destination: 
+      path: k8s-manifests/telegraf
+  destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: telegraf
   syncPolicy:
     syncOptions:
-      - ServerSideApply=true
+      - CreateNamespace=true
     automated:
       enabled: true
       selfHeal: true

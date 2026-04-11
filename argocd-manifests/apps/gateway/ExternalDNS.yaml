@@ -1,25 +1,28 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: headlamp
+  name: external-dns
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: default
   sources:
-    - repoURL: https://kubernetes-sigs.github.io/headlamp/
-      chart: headlamp
-      targetRevision: 0.41.0
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.20.0
       helm:
         valueFiles:
-          - $values/helm-values/headlamp.yaml
+          - $values/helm-values/external-dns.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
+    - repoURL: https://github.com/radoslavirha/home-server2
+      targetRevision: HEAD
+      path: k8s-manifests/external-dns
+      plugin:
+        name: sops
   destination:
     server: https://kubernetes.default.svc
-    namespace: headlamp
+    namespace: external-dns
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

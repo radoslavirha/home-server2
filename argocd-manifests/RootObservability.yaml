@@ -1,0 +1,26 @@
+# Observability App-of-Apps root: KubePrometheusStack, Telegraf, OTel Collector, UI tools.
+# Apply manually after root-datastores credentials are committed and datastores are Healthy.
+# kubectl apply -f argocd-manifests/Root-observability.yaml
+#
+# On rebuild: apply only after data restore from datastores is complete.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-observability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/radoslavirha/home-server2
+    targetRevision: HEAD
+    path: argocd-manifests/apps/observability
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true

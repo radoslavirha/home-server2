@@ -1,0 +1,29 @@
+# Datastores App-of-Apps root: EMQX, MongoDB, InfluxDB2, Loki, Tempo.
+# Apply manually after root-gateway is healthy and before credential ceremony.
+# kubectl apply -f argocd-manifests/Root-datastores.yaml
+#
+# After this root is Healthy:
+#   1. Create root credentials in EMQX, MongoDB, InfluxDB2 UIs.
+#   2. sops --encrypt --in-place k8s-manifests/<app>/credentials.sops.yaml
+#   3. git commit && git push
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-datastores
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/radoslavirha/home-server2
+    targetRevision: HEAD
+    path: argocd-manifests/apps/datastores
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true

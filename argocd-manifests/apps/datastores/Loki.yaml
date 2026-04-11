@@ -1,31 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: emqx
+  name: loki
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: default
   sources:
-    - repoURL: https://repos.emqx.io/charts
-      chart: emqx
-      targetRevision: 5.8.9
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: loki
+      targetRevision: 11.4.8
       helm:
         valueFiles:
-          - $values/helm-values/emqx.yaml
+          - $values/helm-values/loki.yaml
     - repoURL: https://github.com/radoslavirha/home-server2
       targetRevision: HEAD
       ref: values
-    - repoURL: https://github.com/radoslavirha/home-server2
-      targetRevision: HEAD
-      path: k8s-manifests/emqx
   destination:
     server: https://kubernetes.default.svc
-    namespace: mqtt
+    namespace: monitoring
   syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
     automated:
       enabled: true
       selfHeal: true
