@@ -92,13 +92,44 @@ gateway:
       namespacePolicy:
         from: All
 
-metrics:
-  prometheus: null
-
 # Enable Observability
 logs:
   general:
     level: INFO
+    otlp:
+      enabled: true
+      grpc:
+        enabled: true
+        endpoint: otel-collector-opentelemetry-collector.production.svc.cluster.local:4317
+        insecure: true
+  # This enables access logs, outputting them to Traefik's standard output by default. The [Access Logs Documentation](https://doc.traefik.io/traefik/observability/access-logs/) covers formatting, filtering, and output options.
+  access:
+    enabled: true
+    otlp:
+      enabled: true
+      grpc:
+        enabled: true
+        endpoint: otel-collector-opentelemetry-collector.production.svc.cluster.local:4317
+        insecure: true
+
+# Traces
+tracing:
+  otlp:
+    enabled: true
+    grpc:
+      enabled: true
+      endpoint: otel-collector-opentelemetry-collector.production.svc.cluster.local:4317
+      insecure: true
+
+# Metrics via OTLP
+metrics:
+  prometheus: null
+  otlp:
+    enabled: true
+    grpc:
+      enabled: true
+      endpoint: otel-collector-opentelemetry-collector.production.svc.cluster.local:4317
+      insecure: true
 
 securityContext:
   capabilities:
@@ -108,3 +139,6 @@ securityContext:
   runAsGroup: 0
   runAsNonRoot: false
   runAsUser: 0
+
+experimental:
+  otlpLogs: true
