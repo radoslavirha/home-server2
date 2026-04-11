@@ -77,7 +77,7 @@ from that known path — no `terraform_remote_state` needed.
 | RAM | 32 GB |
 | CPU | Ryzen PRO 2400GE |
 | Install disk | M.2 NVMe 256 GB |
-| Storage disk (Longhorn) | SATA SSD 256 GB |
+| Storage disk (Longhorn) | SATA SSD 240 GB |
 | Node IP | `192.168.1.201` |
 
 ### Talos Image Factory schematic
