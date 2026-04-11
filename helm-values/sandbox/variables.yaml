@@ -1,0 +1,5 @@
+VAR_PROTOCOL: http
+VAR_PUBLIC_DOMAIN: server.home2
+VAR_SUBDOMAIN: sandbox
+VAR_MQTT_URL: "mqtt://emqx.mqtt.svc.cluster.local:1883"
+VAR_MONGODB_URL: "mongodb://mongodb.mongodb.svc.cluster.local:27017"

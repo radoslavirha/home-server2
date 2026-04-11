@@ -1,0 +1,40 @@
+apps:
+  interactive-map-feeder-api:
+    image:
+      tag: 0.6.0
+    replicas: 2
+    templates:
+      config:
+        content: |
+            {
+                "serviceName": "{{ APPLICATION }}",
+                "server": {
+                    "httpPort": {{ CONTAINER_PORT }}
+                },
+                "publicURL": "{{ VAR_PROTOCOL }}://{{ VAR_SUBDOMAIN }}.{{ COMPONENT }}.{{ VAR_PUBLIC_DOMAIN }}/{{ APPLICATION_GROUP }}/{{ PATH_NAME }}",
+                "logger": {
+                    "enabled": true,
+                    "level": "info"
+                },
+                "otel": {
+                    "debug": true,
+                    "metrics": {
+                        "enabled": true,
+                        "exporter": {
+                            "url": "http://otel-collector-opentelemetry-collector:4318/v1/metrics"
+                        }
+                    },
+                    "traces": {
+                        "enabled": true,
+                        "exporter": {
+                            "url": "http://otel-collector-opentelemetry-collector:4318/v1/traces"
+                        }
+                    },
+                    "logs": {
+                        "enabled": true,
+                        "exporter": {
+                            "url": "http://otel-collector-opentelemetry-collector:4318/v1/logs"
+                        }
+                    }
+                }
+            }

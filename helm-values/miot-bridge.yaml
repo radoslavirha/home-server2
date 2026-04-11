@@ -1,0 +1,48 @@
+apps:
+  miot-bridge-api:
+    image:
+      repository: radoslavirha/miot-bridge
+      tag: latest
+      pullPolicy: Always
+    resources:
+      requests:
+        cpu: 250m
+        memory: 250Mi
+      limits:
+        cpu: 500m
+        memory: 500Mi
+    labels:
+      component: api
+      partOf: iot
+    services:
+      http:
+        enabled: true
+        protocol: TCP
+        port: 80
+        targetPort: 4000
+      udp:
+        enabled: true
+        protocol: UDP
+        port: 80
+        targetPort: 4000
+    ingress:
+      enabled: true
+      serviceRef: http
+      pathName: miot-bridge
+    udpIngress:
+      enabled: true
+      serviceRef: udp
+    secretRefs:
+      - name: miot-bridge-api-mqtt-credentials
+        keys:
+          - SECRET_MQTT_MIOT_BRIDGE_USERNAME
+          - SECRET_MQTT_MIOT_BRIDGE_PASSWORD
+      - name: miot-bridge-api-mongodb-credentials
+        keys:
+          - SECRET_MONGODB_DATABASE
+          - SECRET_MONGODB_USERNAME
+          - SECRET_MONGODB_PASSWORD
+    templates:
+      config:
+        file: production.json
+        path: /home/app/config
