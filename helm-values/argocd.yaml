@@ -1,7 +1,3 @@
-# ArgoCD Helm values.
-# No secrets here — the admin password hash is injected by Terraform at bootstrap
-# time and preserved by ignoreDifferences in the self-management Application.
-# This file is also consumed by the ArgoCD self-management Application.
 global:
   domain: argocd.server2.home
 
@@ -9,12 +5,11 @@ notifications:
   argocdUrl: http://argocd.server2.home
 
 configs:
-  params:
-    # Run in HTTP mode; TLS will be terminated externally by Traefik (later).
-    server.insecure: "true"
   cm:
     admin.enabled: "true"
     url: http://argocd.server2.home
+  params:
+    server.insecure: "true"
   secret:
     # argocd-secret is managed externally (Terraform now, ESO/Vault later).
     # Helm must not create or overwrite it.
