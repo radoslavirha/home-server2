@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openbao
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://openbao.github.io/openbao-helm
+      chart: openbao
+      targetRevision: 0.27.0
+      helm:
+        valueFiles:
+          - $values/helm-values/openbao.yaml
+    - repoURL: https://github.com/radoslavirha/home-server2
+      targetRevision: HEAD
+      ref: values
+    - repoURL: https://github.com/radoslavirha/home-server2
+      targetRevision: HEAD
+      path: k8s-manifests/openbao
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openbao
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      enabled: true
+      selfHeal: true
+      prune: true

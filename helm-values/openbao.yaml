@@ -1,0 +1,17 @@
+injector:
+  # ESO handles secret injection — agent sidecar injector not needed
+  enabled: false
+
+server:
+  ha:
+    enabled: false
+
+  dataStorage:
+    enabled: true
+    size: 5Gi
+    storageClass: longhorn
+    accessMode: ReadWriteOnce
+
+ui:
+  enabled: true
+  serviceType: ClusterIP

@@ -13,7 +13,8 @@ This repository contains **no secrets**. The approach for server2:
 | Talos patches | `talos/patches/*.yaml` — no secrets | ✅ |
 | Terraform variable values | `terraform/bootstrap/terraform.tfvars`, `terraform/platform/terraform.tfvars` — IPs + versions only | ✅ |
 | ArgoCD admin password | `secrets/argocd.sops.yaml` — SOPS/age encrypted, read by Terraform at bootstrap | ✅ |
-| App secrets | `k8s-manifests/**/*.sops.yaml` — SOPS/age encrypted, decrypted by ArgoCD CMP | ✅ |
+| App secrets (current) | `k8s-manifests/**/*.sops.yaml` — SOPS/age encrypted, decrypted by ArgoCD CMP | ✅ |
+| App secrets (target) | OpenBao KV-v2 (`homeserver/*`), synced to Kubernetes by ESO `ExternalSecret` resources | n/a |
 | age private key | `{path to}/sops/age/keys.txt` — operator machine only, bootstrapped into cluster once via `kubectl create secret` | ❌ |
 
 ## What to back up
@@ -34,11 +35,71 @@ If the **bootstrap** state is lost, the cluster must be re-created (`talosctl re
 If only platform/apps state is lost, run `terraform apply` in the affected module to reconcile
 Terraform's view with the live cluster.
 
-## SOPS + age
+## OpenBao + External Secrets Operator (ESO)
 
-Secrets are encrypted with [SOPS](https://github.com/getsops/sops) using an [age](https://github.com/FiloSottile/age) key. The `.sops.yaml` at the repo root defines which paths are covered and with which public key.
+App secrets are migrating from SOPS to **OpenBao** (open-source Vault fork) + **ESO**.
+OpenBao is deployed by `RootInfra` and initialized manually over `kubectl port-forward` during
+the first cluster bootstrap. ESO runs a `ClusterSecretStore` that uses Kubernetes auth
+(no static tokens) to read from OpenBao and push `Kubernetes Secret` objects into each app namespace.
 
-There are **two categories** of SOPS-encrypted files with different consumers:
+### KV-v2 path layout (mount: `homeserver/`)
+
+| Path | Keys |
+|------|------|
+| `homeserver/external-dns` | `api-key` |
+| `homeserver/emqx` | `dashboard-username`, `dashboard-password` |
+| `homeserver/mongodb` | `root-password` |
+| `homeserver/influxdb2` | `admin-password`, `admin-token` |
+| `homeserver/grafana` | `admin-user`, `admin-password`, `influxdb2-token` |
+| `homeserver/telegraf` | `influxdb2-token`, `mqtt-username`, `mqtt-password` |
+| `homeserver/miot-bridge/production` | MongoDB + MQTT credentials |
+| `homeserver/miot-bridge/sandbox` | MongoDB + MQTT credentials |
+
+### Adding a new app secret (ESO)
+
+```bash
+# 1. Seed the secret in OpenBao (port-forward or from inside the cluster)
+vault kv put homeserver/my-app key=VALUE
+
+# 2. Create an ExternalSecret manifest in k8s-manifests/my-app/ExternalSecret.yaml
+# 3. Add the ArgoCD Application k8s-manifests source to pick it up
+```
+
+Example `ExternalSecret`:
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao
+    kind: ClusterSecretStore
+  target:
+    name: my-app
+  data:
+    - secretKey: key
+      remoteRef:
+        key: homeserver/my-app
+        property: key
+```
+
+### Verification
+
+```bash
+kubectl get clustersecretstore openbao        # Ready=True
+kubectl get externalsecret -A                 # all Ready=True
+```
+
+## SOPS + age (legacy, kept for ArgoCD admin password only)
+
+The `secrets/argocd.sops.yaml` file remains SOPS-encrypted because it is consumed by Terraform
+during bootstrap, before OpenBao or ArgoCD exist. All other `k8s-manifests/**/*.sops.yaml` files
+are candidates for migration to ESO `ExternalSecret` resources.
+
+
 
 | Path | Consumer | Format |
 |------|----------|--------|

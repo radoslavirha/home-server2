@@ -24,6 +24,7 @@ Helm values overrides are in `helm-values/` and referenced by ArgoCD manifests, 
 ### 2. ArgoCD-managed (GitOps)
 
 All other apps. Each app has an Application CRD in the appropriate subdirectory:
+- `argocd-manifests/apps/infra/` — OpenBao, External Secrets Operator
 - `argocd-manifests/apps/gateway/` — Traefik, ExternalDNS
 - `argocd-manifests/apps/datastores/` — EMQX, MongoDB, InfluxDB2, Loki, Tempo
 - `argocd-manifests/apps/observability/` — KubePrometheusStack, Headlamp, Hubble, LonghornUI, Telegraf, OTel
@@ -48,6 +49,7 @@ The upstream `values.yaml` links are version-pinned GitHub blob URLs. Tag format
 - Most charts: `<chart-name>-<version>` (e.g. `argo-cd-9.4.17`, `traefik-39.0.5`)
 - Cilium / Longhorn / Talos: `v<version>` (e.g. `v1.19.2`)
 - ExternalDNS: `external-dns-helm-chart-<version>`
+- ExternalSecrets: `helm-chart-<version>`
 
 ## App documentation rules
 
@@ -60,7 +62,7 @@ The upstream `values.yaml` links are version-pinned GitHub blob URLs. Tag format
 ## Adding a new ArgoCD app
 
 1. Create `argocd-manifests/apps/<group>/<Name>.yaml` — copy an existing Application from the same group as a template.
-   Choose the group that matches the app's role: `gateway`, `datastores`, `observability`, or `apps`.
+   Choose the group that matches the app's role: `infra`, `gateway`, `datastores`, `observability`, or `apps`.
 2. Add helm values override at `helm-values/<name>.yaml`.
 3. Add raw manifests to `k8s-manifests/<name>/` if needed.
 4. Add a row to the `## Technology stack` table in [Readme.md](Readme.md) with all required columns.
@@ -73,8 +75,10 @@ The upstream `values.yaml` links are version-pinned GitHub blob URLs. Tag format
 
 ## Secrets
 
-All secrets are SOPS-encrypted (`*.sops.yaml`). Never commit plaintext secrets.
-See [docs/secrets.md](docs/secrets.md) for the full strategy, age key management, and backup instructions.
+App secrets are stored in **OpenBao** (Vault-compatible) and synced into Kubernetes via **External Secrets Operator**.
+See [docs/secrets.md](docs/secrets.md) for the full strategy, KV path layout, initialization ceremony, and backup instructions.
+
+The only remaining SOPS-encrypted file is `secrets/argocd.sops.yaml` — consumed by Terraform for the ArgoCD admin password.
 
 ## Operational commands
 

@@ -7,16 +7,18 @@ Kubernetes-based home server infrastructure provisioned with Terraform and GitOp
 ```
 home-server2/
 ├── argocd-manifests/
-│   ├── ArgoCD/               ← ArgoCD self-management Application
+│   ├── ArgoCD.yaml           ← ArgoCD self-management Application
 │   ├── RootApps.yaml         ← App-of-Apps: production + sandbox workloads (applied manually)
-│   ├── RootDatastores.yaml  ← App-of-Apps: EMQX, MongoDB, InfluxDB2, Loki, Tempo (applied manually)
-│   ├── RootGateway.yaml     ← App-of-Apps: Traefik + ExternalDNS (applied by Terraform)
+│   ├── RootDatastores.yaml   ← App-of-Apps: EMQX, MongoDB, InfluxDB2, Loki, Tempo (applied manually)
+│   ├── RootGateway.yaml      ← App-of-Apps: Traefik + ExternalDNS (applied manually)
+│   ├── RootInfra.yaml        ← App-of-Apps: OpenBao + ESO (applied manually)
 │   ├── RootObservability.yaml ← App-of-Apps: KubePrometheusStack, Telegraf, OTel, UI tools (applied manually)
 │   └── apps/
-│       ├── gateway/          ← root-gateway: Traefik, ExternalDNS
+│       ├── apps/             ← root-apps: MiotBridge, InteractiveMapFeeder (prod + sandbox)
 │       ├── datastores/       ← root-datastores: EMQX, MongoDB, InfluxDB2, Loki, Tempo
-│       ├── observability/    ← root-observability: KubePrometheusStack, Headlamp, Hubble, LonghornUI, Telegraf, OTel
-│       └── apps/             ← root-apps: MiotBridge, InteractiveMapFeeder (prod + sandbox)
+│       ├── gateway/          ← root-gateway: Traefik, ExternalDNS
+│       ├── infra/            ← infra: OpenBao, External Secrets Operator
+│       └── observability/    ← root-observability: KubePrometheusStack, Headlamp, Hubble, LonghornUI, Telegraf, OTel
 ├── credentials/              ← GITIGNORED — kubeconfig + talosconfig (written by Terraform)
 ├── docs/
 │   └── secrets.md            ← Secrets strategy, backup guide, SOPS/remote-backend notes
@@ -63,6 +65,8 @@ from that known path — no `terraform_remote_state` needed.
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | Standard Kubernetes ingress/routing CRDs | v1.2.1 | — | — | — |
 | [Longhorn](https://longhorn.io/) | Distributed block storage | 1.11.1 | [longhorn](https://artifacthub.io/packages/helm/longhorn/longhorn) | [longhorn.yaml](helm-values/longhorn.yaml) | [values.yaml @ v1.11.1](https://github.com/longhorn/longhorn/blob/v1.11.1/chart/values.yaml) |
 | [ArgoCD](https://argoproj.github.io/cd/) | GitOps continuous delivery (App-of-Apps) | 9.5.0 | [argo-cd](https://artifacthub.io/packages/helm/argo/argo-cd) | [argocd.yaml](helm-values/argocd.yaml) | [values.yaml @ argo-cd-9.5.0](https://github.com/argoproj/argo-helm/blob/argo-cd-9.5.0/charts/argo-cd/values.yaml) |
+| [OpenBao](https://openbao.org/) | Secrets management (open-source Vault fork, BSL-free) | 0.27.0 | [openbao](https://artifacthub.io/packages/helm/openbao/openbao) | [openbao.yaml](helm-values/openbao.yaml) | [values.yaml @ openbao-0.27.0](https://github.com/openbao/openbao-helm/blob/openbao-0.27.0/charts/openbao/values.yaml) |
+| [External Secrets Operator](https://external-secrets.io/) | Kubernetes-native secrets sync from OpenBao | 2.3.0 | [external-secrets](https://artifacthub.io/packages/helm/external-secrets-operator/external-secrets) | [external-secrets.yaml](helm-values/external-secrets.yaml) | [values.yaml @ helm-chart-2.3.0](https://github.com/external-secrets/external-secrets/blob/helm-chart-2.3.0/deploy/charts/external-secrets/values.yaml) |
 | [Traefik](https://traefik.io/) | Ingress / Gateway API proxy, bare-metal load balancer | 39.0.7 | [traefik](https://artifacthub.io/packages/helm/traefik/traefik) | [traefik.yaml](helm-values/traefik.yaml) | [values.yaml @ traefik-39.0.7](https://github.com/traefik/traefik-helm-chart/blob/v39.0.7/traefik/values.yaml) |
 | [Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/) | Cilium network observability UI | built into Cilium | — | — | — |
 | [Headlamp](https://headlamp.dev/) | Kubernetes web UI | 0.41.0 | [headlamp](https://artifacthub.io/packages/helm/headlamp/headlamp) | [headlamp.yaml](helm-values/headlamp.yaml) | [values.yaml @ headlamp-chart-0.41.0](https://github.com/kubernetes-sigs/headlamp/blob/v0.41.0/charts/headlamp/values.yaml) |
@@ -174,10 +178,11 @@ data must be restored before consumers start.
 
 | Root | Directory | Apps | Applied by |
 |------|-----------|------|------------|
-| `RootApps` | `apps/apps/` | MiotBridge ×2, InteractiveMapFeeder ×2 | Manual |
-| `RootDatastores` | `apps/datastores/` | EMQX, MongoDB, InfluxDB2, Loki, Tempo | Manual |
+| `RootInfra` | `apps/infra/` | OpenBao, External Secrets Operator | Manual |
 | `RootGateway` | `apps/gateway/` | Traefik, ExternalDNS | Manual |
+| `RootDatastores` | `apps/datastores/` | EMQX, MongoDB, InfluxDB2, Loki, Tempo | Manual |
 | `RootObservability` | `apps/observability/` | KubePrometheusStack, Headlamp, Hubble UI, Longhorn UI, Telegraf, OTel Collector ×2 | Manual |
+| `RootApps` | `apps/apps/` | MiotBridge ×2, InteractiveMapFeeder ×2 | Manual |
 
 Once a root Application is applied it is **fully GitOps** — ArgoCD auto-syncs every commit.
 The manual gate only matters on first install and on rebuilds.
@@ -186,15 +191,59 @@ The manual gate only matters on first install and on rebuilds.
 
 ```
 Terraform apply  →  ArgoCD healthy
-                 →  [install Traefik, external DNS]
+                 →  kubectl apply -f argocd-manifests/RootInfra.yaml
+                 →  OpenBao pod running (Sealed state)
+                 →  [port-forward + vault operator init  → save 5 unseal keys + root token securely]
+                 →  [vault operator unseal  (×3 with different keys)]
+                 →  [vault secrets enable -path=homeserver kv-v2]
+                 →  [vault auth enable kubernetes + configure role + seed all secrets]
+                 →  root infra healthy (ClusterSecretStore Ready)
                  →  kubectl apply -f argocd-manifests/RootGateway.yaml
                  →  root gateway healthy
-                 →  [create EMQX/MongoDB/InfluxDB2 credentials, sops-encrypt, git push]
                  →  kubectl apply -f argocd-manifests/RootDatastores.yaml
                  →  root datastores healthy
                  →  kubectl apply -f argocd-manifests/RootObservability.yaml
                  →  root observability healthy
                  →  kubectl apply -f argocd-manifests/RootApps.yaml
+```
+
+### OpenBao initialization (detail)
+
+```bash
+# Port-forward to the OpenBao pod
+kubectl port-forward -n openbao svc/openbao 8200:8200
+export VAULT_ADDR=http://localhost:8200
+
+# Initialize — prints 5 unseal keys and the root token.  SAVE THEM SECURELY.
+vault operator init
+
+# Unseal — run three times, each time with a different unseal key from above
+vault operator unseal
+
+# Log in with the root token
+vault login
+
+# Enable KV-v2 secrets engine at homeserver/
+vault secrets enable -path=homeserver kv-v2
+
+# Enable Kubernetes auth so ESO can authenticate without a static token
+vault auth enable kubernetes
+vault write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc:443"
+
+# Policy: read-only access to all homeserver secrets
+vault policy write read-homeserver - <<'EOF'
+path "homeserver/data/*" { capabilities = ["read"] }
+EOF
+
+# Role: bind the ESO ServiceAccount to the policy
+vault write auth/kubernetes/role/external-secrets \
+  bound_service_account_names=external-secrets \
+  bound_service_account_namespaces=external-secrets \
+  policies=read-homeserver \
+  ttl=24h
+
+# Seed a secret example (repeat for each app secret)
+vault kv put homeserver/external-dns api-key=CHANGEME
 ```
 
 ### Intra-app waves (resource-level ordering within a single Application)
