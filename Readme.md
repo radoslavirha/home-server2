@@ -111,6 +111,16 @@ To create/update a schematic: <https://factory.talos.dev>
 | [terraform](https://developer.hashicorp.com/terraform/install) | Infrastructure as Code | `brew install terraform` |
 | [talosctl](https://www.talos.dev/latest/talos-guides/install/talosctl/) | Talos CLI | `brew install siderolabs/tap/talosctl` |
 | [kubectl](https://kubernetes.io/docs/tasks/tools/) | Kubernetes CLI (used by Terraform for Gateway API CRDs) | `brew install kubectl` |
+| [sops](https://github.com/getsops/sops) | Encrypt/decrypt secrets | `brew install sops` |
+| [age](https://github.com/FiloSottile/age) | Age key generation | `brew install age` |
+| [vault](https://developer.hashicorp.com/vault/install) | OpenBao CLI (API-compatible) — used for init, unseal, and seeding secrets | `brew install hashicorp/tap/vault` |
+
+**Required environment variable** — Terraform's SOPS provider uses this to find your age private key.
+Add to `~/.zshrc` or `~/.zprofile`:
+
+```bash
+export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+```
 
 ## Applying the cluster
 
@@ -140,7 +150,17 @@ terraform init
 terraform apply -auto-approve
 ```
 
-### Step 3 — Bootstrap the SOPS age key (once only)
+### Step 3 — Deploy ArgoCD
+
+```bash
+cd terraform/apps
+terraform init
+terraform apply -auto-approve
+```
+
+This installs ArgoCD via Helm and applies the self-management Application.
+
+### Step 4 — Bootstrap the SOPS age key (once only)
 
 After ArgoCD is running, push the age private key into the cluster so the SOPS CMP sidecar can
 decrypt `*.sops.yaml` manifests. This is a one-time manual step — the key is never stored in git
@@ -155,15 +175,13 @@ kubectl create secret generic sops-age-key \
 
 The `--dry-run=client | apply` pattern makes the command idempotent (safe to re-run).
 
-### Step 4 — Deploy ArgoCD
+Then restart the repo-server so it picks up the newly mounted secret:
 
 ```bash
-cd terraform/apps
-terraform init
-terraform apply -auto-approve
+kubectl rollout restart deployment argocd-repo-server -n argocd
+kubectl rollout status deployment argocd-repo-server -n argocd
 ```
 
-This installs ArgoCD via Helm and applies the self-management Application.
 All `Root*.yaml` are applied manually — continue with the [deployment roots sequence](#bootstrap-sequence-first-install).
 
 > Subsequent runs: `terraform apply -auto-approve` inside whichever module changed. Each module is

@@ -81,10 +81,13 @@ repoServer:
 
   # Extra volumes shared between the initContainer and the SOPS CMP sidecar.
   volumes:
-    # Age private key bootstrapped by Terraform (terraform/apps/sops.tf).
+    # Age private key bootstrapped manually after ArgoCD is running (step 4).
+    # optional: true so the repo-server pod can start before the secret exists.
+    # After creating the secret, restart the repo-server for it to pick it up.
     - name: sops-age-key
       secret:
         secretName: sops-age-key
+        optional: true
     # Scratch volume: initContainer downloads the sops binary here.
     - name: custom-tools
       emptyDir: {}
@@ -106,6 +109,14 @@ repoServer:
           wget -qO /custom-tools/sops \
             "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.${ARCH}"
           chmod +x /custom-tools/sops
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
         - name: custom-tools
           mountPath: /custom-tools
@@ -122,6 +133,11 @@ repoServer:
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
         # Shared by the chart: argocd-cmp-server binary
         - name: var-files

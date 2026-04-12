@@ -2,7 +2,7 @@ data "sops_file" "argocd" {
   source_file = "../../secrets/argocd.sops.yaml"
 }
 
-# Create the namespace explicitly so the secret can be provisioned before Helm runs.
+# Create the namespace explicitly so the argocd-secret can be provisioned before Helm runs.
 resource "kubernetes_namespace" "argocd" {
   metadata {
     name = "argocd"
